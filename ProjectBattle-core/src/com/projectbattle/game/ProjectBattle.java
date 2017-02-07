@@ -18,14 +18,18 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.sun.javafx.geom.Vec3f;
 
+import myPathFinding.Node;
+
 public class ProjectBattle extends ApplicationAdapter {
 	SpriteBatch batch;
 	Texture img;
 	
-	static final float pixelsToUnits = 1/5f;
-	static final float unitsToPixels = 5/1f;
+	static final float pixelsToUnits = 1/16f;
+	static final float unitsToPixels = 16/1f;
 	
-	World world;
+	static float tileSize = 64 * pixelsToUnits;
+	
+	static World world;
 	OrthographicCamera camera;
 	
 	private Vector2 selectionPoint1 = new Vector2();
@@ -34,46 +38,93 @@ public class ProjectBattle extends ApplicationAdapter {
 	private Rectangle selectionRectangle = new Rectangle();
 	private int rotationSpeed = 1;
 	 static ShapeRenderer shapeRenderer;
+	 
+	 
+	 boolean rightButtonDown;
+	 
+	 MainMenu mainMenu;
+	 
+	 static boolean inGame;
+	 
+	 static boolean inMainMenu;
+	 Texture t;
 	//2728
 	
 	@Override
 	public void create () {
+		System.out.println(Gdx.app.getJavaHeap()/1000000 + " " + Gdx.app.getNativeHeap()/1000000 + " MB used");
 		Assets assets = new Assets();
+		System.out.println(Gdx.app.getJavaHeap()/1000000 + " " + Gdx.app.getNativeHeap()/1000000 + " MB used");
+		
 		   float w = Gdx.graphics.getWidth();
-	        float h = Gdx.graphics.getHeight();
+	       float h = Gdx.graphics.getHeight();
 
 	        // Constructs a new OrthographicCamera, using the given viewport width and height
 	        // Height is multiplied by aspect ratio.
+	        
 	        camera = new OrthographicCamera(500, 500 * (h / w));
-		batch = new SpriteBatch();
-		world = new World(1000, 1000, 10);
-		world.worldTiles[5][5].texture = new Texture(Gdx.files.internal("greyTile.png"));
-		img = new Texture("badlogic.jpg");
+	        mainMenu = new MainMenu(camera.viewportWidth, camera.viewportHeight);
+	        
+		    batch = new SpriteBatch();
+		
+		
 		shapeRenderer = new ShapeRenderer();
+		
+		inMainMenu = true;
 	}
 
 	@Override
 	public void render () {
 		processInput();
+		
+		if(inMainMenu){
+			batch.setProjectionMatrix(camera.combined);
+			batch.begin();
+			mainMenu.render(batch);
+			batch.end();
+		}
+		
+		if(inGame){
+		
+		update(Gdx.graphics.getDeltaTime());
 		camera.update();
 		batch.setProjectionMatrix(camera.combined);
 		shapeRenderer.setProjectionMatrix(camera.combined);
 		Gdx.gl.glClearColor(0, 0, 0, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT | (Gdx.graphics.getBufferFormat().coverageSampling?GL20.GL_COVERAGE_BUFFER_BIT_NV:0));
 		
-		shapeRenderer.begin(ShapeType.Line);
+		
 		batch.begin();
+		
+		
 		world.render(batch);
+
 		
 		//batch.draw(img, 0, 0);
 		//batch.draw(TileAssets.grassTile, 0, 0, 32, 32);
 		batch.end();
 		
-		
+		shapeRenderer.begin(ShapeType.Line);
 		shapeRenderer.setColor(Color.BLUE);
-
+		world.renderSelection(shapeRenderer);
 		shapeRenderer.rect(selectionRectangle.x, selectionRectangle.y, selectionRectangle.width, selectionRectangle.height);
 		shapeRenderer.end();
+		}
+	}
+	
+	public static void beginGame(){
+		initWorld();
+		inGame = true;
+		inMainMenu = false;
+	}
+	
+	public static void initWorld(){
+		world = new World(1000, 1000, tileSize);
+		world.worldTiles[5][5].texture = new Texture(Gdx.files.internal("greyTile.png"));
+	}
+	
+	public void update(float deltaTime){
+		world.update(deltaTime);
 	}
 	
 	Vector3 getMousePosInGameWorld() {
@@ -81,6 +132,17 @@ public class ProjectBattle extends ApplicationAdapter {
 		}
 	
 	private void processInput() {
+		if(Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)){
+			if(inGame){
+			inGame = false;
+			inMainMenu = true; 
+			mainMenu.preventImmediateExit(); //Otherwise we get instantly exited
+			world = null; //Allows world to be garbage colllected
+			
+			return;
+			}
+		}
+		
 		if(Gdx.input.isButtonPressed(0)){
 			if(!selectionFlag){
 				selectionPoint1.set(getMousePosInGameWorld().x, getMousePosInGameWorld().y);
@@ -91,7 +153,7 @@ public class ProjectBattle extends ApplicationAdapter {
 				selectionRectangle.setY(selectionPoint1.y);
 				selectionRectangle.setWidth(selectionPoint2.x - selectionPoint1.x);
 				selectionRectangle.setHeight(selectionPoint2.y - selectionPoint1.y);
-				System.out.println(selectionRectangle);
+
 			
 			}
 			
@@ -132,7 +194,7 @@ public class ProjectBattle extends ApplicationAdapter {
 						tempRectangle.setWidth(Math.abs(selectionRectangle.width));
 						tempRectangle.setY(selectionRectangle.y + selectionRectangle.height);
 						tempRectangle.setHeight(Math.abs(selectionRectangle.height));
-						//System.out.println("New rect " + tempRectangle);
+
 						if(tempRectangle.contains(World.entities.get(i).worldX, World.entities.get(i).worldY)){
 							World.entities.get(i).setSelected(true);
 						}else{
@@ -156,6 +218,24 @@ public class ProjectBattle extends ApplicationAdapter {
 			selectionRectangle.set(0, 0, 0, 0);
 			
 		}
+		
+		if(Gdx.input.isButtonPressed(1)){  
+			if(rightButtonDown == false){
+				System.out.println("Da");
+				rightButtonDown = true;
+			for(Entity e : World.entities){
+				if(e.isSelected()){
+					System.out.println(((int)getMousePosInGameWorld().x + " " + (int)getMousePosInGameWorld().y));
+					e.nodes.clear();
+					e.moveTo(new Node((int) (getMousePosInGameWorld().x/World.tileSize), (int) (getMousePosInGameWorld().y/World.tileSize)));
+					
+					continue;
+				}
+			}
+		}
+	}else{
+		rightButtonDown = false;
+	}
 		
 		
 		if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT)) {
@@ -197,6 +277,5 @@ public class ProjectBattle extends ApplicationAdapter {
 	public void dispose () {
 		shapeRenderer.dispose();
 		batch.dispose();
-		img.dispose();
 	}
 }

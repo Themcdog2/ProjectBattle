@@ -11,12 +11,15 @@ public class Tile{
 	float worldX;
 	float worldY;
 	
+	boolean isBlocked;
+	
 	
 	
 	
 	public Tile(float worldX, float worldY, float tileSize){
 		texture = Assets.grassTile;
-		this.tileSize = (tileSize) * ProjectBattle.pixelsToUnits;
+		this.tileSize = (tileSize);
+		//System.out.println(this.tileSize);
 		this.worldX = worldX;
 		this.worldY = worldY;
 		
@@ -28,7 +31,7 @@ public class Tile{
 	
 	public void render(SpriteBatch batch){
 		
-		batch.draw(texture, worldX, worldY, tileSize * ProjectBattle.unitsToPixels, tileSize * ProjectBattle.unitsToPixels);
+		batch.draw(texture, worldX, worldY, tileSize , tileSize);
 		
 	}
 	
